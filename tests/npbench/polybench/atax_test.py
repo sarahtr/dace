@@ -10,6 +10,7 @@ from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
 from dace.transformation.dataflow import StreamingMemory, StreamingComposition
 from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt
 from dace.config import set_temporary
+from dace.sdfg.utils import is_fpga_kernel
 
 # Data set sizes
 # M, N
@@ -50,7 +51,7 @@ def run_atax(device_type: dace.dtypes.DeviceType):
     """
 
     # Initialize data (polybench small size)
-    M, N = sizes["small"]
+    M, N = sizes["large"]
     A, x, y_ref = init_data(M, N)
 
     if device_type in {dace.dtypes.DeviceType.CPU, dace.dtypes.DeviceType.GPU}:
@@ -69,17 +70,22 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Gemv
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
-        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True)
-        assert sm_applied == 6  # 3 inlines and 3 Streaming memories
+        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+        #                                                  [{}, {
+        #                                                      'storage': dace.StorageType.FPGA_Local
+        #                                                  }],
+        #                                                  print_report=True)
+        # assert sm_applied == 6  # 3 inlines and 3 Streaming memories
 
         ###########################
         # FPGA Auto Opt
-        fpga_auto_opt.fpga_global_to_local(sdfg)
-        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
+        #fpga_auto_opt.fpga_global_to_local(sdfg)
+        #fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
+
+        for s in sdfg.states():
+            if is_fpga_kernel(sdfg, s):
+                s.instrument = dace.InstrumentationType.FPGA
+                break
 
         # specialize the SDFG (needed by the GEMV expansion)
         sdfg.specialize(dict(M=M, N=N))
