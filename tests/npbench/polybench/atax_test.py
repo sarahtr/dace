@@ -82,13 +82,14 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         #fpga_auto_opt.fpga_global_to_local(sdfg)
         #fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
 
+        # specialize the SDFG (needed by the GEMV expansion)
+        sdfg.specialize(dict(M=M, N=N))
+
         for s in sdfg.states():
             if is_fpga_kernel(sdfg, s):
                 s.instrument = dace.InstrumentationType.FPGA
                 break
 
-        # specialize the SDFG (needed by the GEMV expansion)
-        sdfg.specialize(dict(M=M, N=N))
         y = sdfg(A, x)
 
     # Compute ground truth and Validate result
