@@ -24,7 +24,7 @@ sizes = {
 M, N = (dc.symbol(s, dtype=dc.int64) for s in ('M', 'N'))
 
 
-def initialize(M, N, datatype=np.float64):
+def initialize(M, N, datatype=np.float32):
     A = np.fromfunction(lambda i, j: (i * (j + 1) % N) / N, (N, M), dtype=datatype)
     p = np.fromfunction(lambda i: (i % M) / M, (M, ), dtype=datatype)
     r = np.fromfunction(lambda i: (i % N) / N, (N, ), dtype=datatype)
@@ -33,7 +33,7 @@ def initialize(M, N, datatype=np.float64):
 
 
 @dc.program
-def bicg_kernel(A: dc.float64[N, M], p: dc.float64[M], r: dc.float64[N]):
+def bicg_kernel(A: dc.float32[N, M], p: dc.float32[M], r: dc.float32[N]):
     return r @ A, A @ p
 
 

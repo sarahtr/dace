@@ -88,13 +88,16 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         for s in sdfg.states():
             if is_fpga_kernel(sdfg, s):
                 s.instrument = dace.InstrumentationType.FPGA
-                break
+                #break
 
         y = sdfg(A, x)
+
+
 
     # Compute ground truth and Validate result
     y_ref = kernel.f(A, x)
     assert np.allclose(y, y_ref)
+    print("done")
     return sdfg
 
 

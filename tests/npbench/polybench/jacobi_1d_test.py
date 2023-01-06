@@ -10,6 +10,7 @@ from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
 from dace.transformation.dataflow import StreamingMemory, StreamingComposition
 from dace.transformation.auto.auto_optimize import auto_optimize
 from dace.config import set_temporary
+from dace.sdfg.utils import is_fpga_kernel
 
 # Dataset sizes
 # TSTEPS, N
@@ -18,14 +19,14 @@ N = dc.symbol('N', dtype=dc.int64)
 
 
 @dc.program
-def jacobi_1d_kernel(TSTEPS: dc.int64, A: dc.float64[N], B: dc.float64[N]):
+def jacobi_1d_kernel(TSTEPS: dc.int32, A: dc.float32[N], B: dc.float32[N]):
 
     for t in range(1, TSTEPS):
         B[1:-1] = 0.33333 * (A[:-2] + A[1:-1] + A[2:])
         A[1:-1] = 0.33333 * (B[:-2] + B[1:-1] + B[2:])
 
 
-def initialize(N, datatype=np.float64):
+def initialize(N, datatype=np.float32):
     A = np.fromfunction(lambda i: (i + 2) / N, (N, ), dtype=datatype)
     B = np.fromfunction(lambda i: (i + 3) / N, (N, ), dtype=datatype)
 
@@ -46,7 +47,7 @@ def run_jacobi_1d(device_type: dace.dtypes.DeviceType):
     '''
 
     # Initialize data (polybench small size)
-    TSTEPS, N = sizes["small"]
+    TSTEPS, N = sizes["large"]
     A, B = initialize(N)
     A_ref = np.copy(A)
     B_ref = np.copy(B)
@@ -66,8 +67,13 @@ def run_jacobi_1d(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Dot
         Dot.default_implementation = "FPGA_PartialSums"
         sdfg.expand_library_nodes()
-        sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
+        #sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
         sdfg.specialize(dict(N=N))
+
+        for s in sdfg.states():
+            if is_fpga_kernel(sdfg, s):
+                s.instrument = dace.InstrumentationType.FPGA
+
         sdfg(TSTEPS=TSTEPS, A=A, B=B)
 
     # Compute ground truth and validate

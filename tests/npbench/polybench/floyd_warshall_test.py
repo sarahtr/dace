@@ -10,6 +10,7 @@ from dace.fpga_testing import fpga_test
 from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
 from dace.transformation.dataflow import StreamingMemory, MapFusion, StreamingComposition, PruneConnectors
 from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt
+from dace.sdfg.utils import is_fpga_kernel
 
 # Data set sizes
 # N
@@ -54,7 +55,7 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
     """
 
     # Initialize data (polybench mini size)
-    N = sizes["mini"]
+    N = sizes["large"]
     path = init_data(N)
     gt_path = np.copy(path)
 
@@ -71,37 +72,45 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
-        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True)
-        sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True,
-                                                         permissive=True)
-        assert sc_applied == 1
+        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+        #                                                  [{}, {
+        #                                                      'storage': dace.StorageType.FPGA_Local
+        #                                                  }],
+        #                                                  print_report=True)
+        # sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
+        #                                                  [{}, {
+        #                                                      'storage': dace.StorageType.FPGA_Local
+        #                                                  }],
+        #                                                  print_report=True,
+        #                                                  permissive=True)
+        # assert sc_applied == 1
 
         # Prune connectors after Streaming Composition
-        pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
-                                                           options=[{
-                                                               'remove_unused_containers': True
-                                                           }])
+        # pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
+        #                                                    options=[{
+        #                                                        'remove_unused_containers': True
+        #                                                    }])
 
-        assert pruned_conns == 1
+        # assert pruned_conns == 1
 
-        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
+        # fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
 
         # In this case, we want to generate the top-level state as an host-based state,
         # not an FPGA kernel. We need to explicitly indicate that
-        sdfg.states()[0].location["is_FPGA_kernel"] = False
+        #sdfg.states()[0].location["is_FPGA_kernel"] = False
         # we need to specialize both the top-level SDFG and the nested SDFG
         sdfg.specialize(dict(N=N))
-        sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
+        #sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
         # run program
+        for s in sdfg.states():
+            if is_fpga_kernel(sdfg, s):
+                s.instrument = dace.InstrumentationType.FPGA
+                
         sdfg(path=path)
+
+        print(sdfg.get_latest_report())
+
+        
 
     # Compute ground truth and validate result
     ground_truth(gt_path, N)

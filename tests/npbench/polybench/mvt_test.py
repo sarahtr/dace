@@ -10,6 +10,7 @@ from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
 from dace.transformation.dataflow import StreamingMemory, StreamingComposition
 from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt
 from dace.config import set_temporary
+from dace.sdfg.utils import is_fpga_kernel
 
 # Data set sizes
 # N
@@ -19,13 +20,13 @@ N = dc.symbol('N', dtype=dc.int64)
 
 
 @dc.program
-def mvt_kernel(x1: dc.float64[N], x2: dc.float64[N], y_1: dc.float64[N], y_2: dc.float64[N], A: dc.float64[N, N]):
+def mvt_kernel(x1: dc.float32[N], x2: dc.float32[N], y_1: dc.float32[N], y_2: dc.float32[N], A: dc.float32[N, N]):
 
     x1 += A @ y_1
     x2 += y_2 @ A
 
 
-def initialize(N, datatype=np.float64):
+def initialize(N, datatype=np.float32):
     x1 = np.fromfunction(lambda i: (i % N) / N, (N, ), dtype=datatype)
     x2 = np.fromfunction(lambda i: ((i + 1) % N) / N, (N, ), dtype=datatype)
     y_1 = np.fromfunction(lambda i: ((i + 3) % N) / N, (N, ), dtype=datatype)
@@ -42,7 +43,7 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
     '''
 
     # Initialize data (polybench small size)
-    N = sizes["small"]
+    N = sizes["large"]
     x1, x2, y_1, y_2, A = initialize(N)
     x1_ref = np.copy(x1)
     x2_ref = np.copy(x2)
@@ -62,8 +63,14 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Gemv
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
-        sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
+        #sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
         sdfg.specialize(dict(N=N))
+        
+        for s in sdfg.states():
+            if is_fpga_kernel(sdfg, s):
+                s.instrument = dace.InstrumentationType.FPGA
+                break
+            
         sdfg(x1, x2, y_1, y_2, A)
 
     # Compute ground truth and validate
