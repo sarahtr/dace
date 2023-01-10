@@ -26,7 +26,7 @@ M, N = (dc.symbol(s, dtype=dc.int32) for s in ('M', 'N'))
 
 
 @dc.program
-def kernel(A: dc.float32[M, N], x: dc.float32[N]):
+def atax_kernel(A: dc.float32[M, N], x: dc.float32[N]):
     return (A @ x) @ A
 
 
@@ -56,13 +56,13 @@ def run_atax(device_type: dace.dtypes.DeviceType):
 
     if device_type in {dace.dtypes.DeviceType.CPU, dace.dtypes.DeviceType.GPU}:
         # Parse the SDFG and apply auto-opt
-        sdfg = kernel.to_sdfg()
+        sdfg = atax_kernel.to_sdfg()
         sdfg = auto_optimize(sdfg, device_type)
         y = sdfg(A, x, M=M, N=N)
 
     elif device_type == dace.dtypes.DeviceType.FPGA:
         # Parse SDFG and apply FPGA friendly optimization
-        sdfg = kernel.to_sdfg(simplify=True)
+        sdfg = atax_kernel.to_sdfg(simplify=True)
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
@@ -70,17 +70,17 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Gemv
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
-        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-        #                                                  [{}, {
-        #                                                      'storage': dace.StorageType.FPGA_Local
-        #                                                  }],
-        #                                                  print_report=True)
-        # assert sm_applied == 6  # 3 inlines and 3 Streaming memories
+        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True)
+        assert sm_applied == 6  # 3 inlines and 3 Streaming memories
 
         ###########################
         # FPGA Auto Opt
-        #fpga_auto_opt.fpga_global_to_local(sdfg)
-        #fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
+        fpga_auto_opt.fpga_global_to_local(sdfg)
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
 
         # specialize the SDFG (needed by the GEMV expansion)
         sdfg.specialize(dict(M=M, N=N))
@@ -95,7 +95,7 @@ def run_atax(device_type: dace.dtypes.DeviceType):
 
 
     # Compute ground truth and Validate result
-    y_ref = kernel.f(A, x)
+    y_ref = atax_kernel.f(A, x)
     assert np.allclose(y, y_ref)
     print("done")
     return sdfg

@@ -65,17 +65,17 @@ def run_bicg(device_type: dace.dtypes.DeviceType):
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
 
-        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-        #                                                  [{}, {
-        #                                                      'storage': dace.StorageType.FPGA_Local
-        #                                                  }],
-        #                                                  print_report=True)
-        # assert sm_applied == 8  # 3 inlines and 3 Streaming memories
+        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True)
+        assert sm_applied == 8  # 3 inlines and 3 Streaming memories
 
         ###########################
         # FPGA Auto Opt
-        # fpga_auto_opt.fpga_global_to_local(sdfg)
-        #fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
+        fpga_auto_opt.fpga_global_to_local(sdfg)
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
 
 
 

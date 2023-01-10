@@ -63,7 +63,7 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Gemv
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
-        #sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
+        sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
         sdfg.specialize(dict(N=N))
         
         for s in sdfg.states():

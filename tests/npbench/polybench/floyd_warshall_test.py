@@ -68,15 +68,15 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
     elif device_type == dace.dtypes.DeviceType.FPGA:
         # Parse SDFG and apply FPGA friendly optimization
         sdfg = kernel.to_sdfg(simplify=True)
-        # sdfg.apply_transformations_repeated([MapFusion])
+        sdfg.apply_transformations_repeated([MapFusion])
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
-        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-        #                                                  [{}, {
-        #                                                      'storage': dace.StorageType.FPGA_Local
-        #                                                  }],
-        #                                                  print_report=True)
+        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True)
         # sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
         #                                                  [{}, {
         #                                                      'storage': dace.StorageType.FPGA_Local
@@ -85,7 +85,7 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
         #                                                  permissive=True)
         # assert sc_applied == 1
 
-        # Prune connectors after Streaming Composition
+        #Prune connectors after Streaming Composition
         # pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
         #                                                    options=[{
         #                                                        'remove_unused_containers': True
@@ -93,7 +93,7 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
 
         # assert pruned_conns == 1
 
-        # fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
 
         # In this case, we want to generate the top-level state as an host-based state,
         # not an FPGA kernel. We need to explicitly indicate that
@@ -108,9 +108,6 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
                 
         sdfg(path=path)
 
-        print(sdfg.get_latest_report())
-
-        
 
     # Compute ground truth and validate result
     ground_truth(gt_path, N)
