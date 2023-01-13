@@ -1,0 +1,8 @@
+{
+  "traceEvents": [
+    {"name": "atax_kernel_0_0", "cat": "FPGA", "ph": "X", "ts": 399117, "dur": 113606, "pid": 721340, "tid": 7690719662662846826, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA kernel runtime for atax_kernel", "cat": "FPGA", "ph": "X", "ts": 399117, "dur": 113606, "pid": 721340, "tid": 7690719662662846826, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA state runtime for atax_kernel", "cat": "FPGA", "ph": "X", "ts": 1673351015366037, "dur": 117564, "pid": 721340, "tid": 7690719662662846826, "args": {"sdfg_id": 0, "state_id": 0}}
+  ],
+  "sdfgHash": "807894f892a640ff61d767d685ad2ae0fee8cbede21ea7c75b2c4a8ab705494e"
+}

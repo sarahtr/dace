@@ -8,7 +8,12 @@ import argparse
 from dace.fpga_testing import fpga_test, xilinx_test
 from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
 from dace.transformation.dataflow import StreamingMemory, StreamingComposition
-from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt
+from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt, greedy_fuse
+from dace.transformation.dataflow import MapCollapse, TrivialMapElimination, MapFusion, ReduceExpansion
+from dace.transformation.interstate import LoopToMap, RefineNestedAccess
+from dace.transformation.subgraph.composite import CompositeFusion
+from dace.transformation.subgraph import helpers as xfsh
+from dace.transformation import helpers as xfh
 from dace.config import set_temporary
 from dace.sdfg.utils import is_fpga_kernel
 
@@ -56,6 +61,43 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
     elif device_type == dace.dtypes.DeviceType.FPGA:
         # Parse SDFG and apply FPGA friendly optimization
         sdfg = mvt_kernel.to_sdfg(simplify=True)
+
+        
+        '''
+        General transformations from auto_optimize:
+        '''
+
+        # Simplification and loop parallelization
+        transformed = True
+        sdfg.apply_transformations_repeated(TrivialMapElimination, validate=True, validate_all=False)
+        while transformed:
+            sdfg.simplify(validate=False, validate_all=False)
+            for s in sdfg.sdfg_list:
+                xfh.split_interstate_edges(s)
+            l2ms = sdfg.apply_transformations_repeated((LoopToMap, RefineNestedAccess),
+                                                    validate=False,
+                                                    validate_all=False)
+            transformed = l2ms > 0
+
+        # Collapse maps and eliminate trivial dimensions
+        sdfg.simplify()
+        sdfg.apply_transformations_repeated(MapCollapse, validate=False, validate_all=False)
+
+        # fuse subgraphs greedily
+        sdfg.simplify()
+
+        greedy_fuse(sdfg, device=device_type, validate_all=False)
+
+        # fuse stencils greedily
+        greedy_fuse(sdfg, device=device_type, validate_all=False, recursive=False, stencil=True)
+
+        # Move Loops inside Maps when possible
+        from dace.transformation.interstate import MoveLoopIntoMap
+        sdfg.apply_transformations_repeated([MoveLoopIntoMap])
+
+        '''------------'''
+
+
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
@@ -63,7 +105,7 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Gemv
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
-        sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
+        #sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
         sdfg.specialize(dict(N=N))
         
         for s in sdfg.states():
