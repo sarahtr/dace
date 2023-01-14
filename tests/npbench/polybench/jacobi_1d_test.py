@@ -104,10 +104,36 @@ def run_jacobi_1d(device_type: dace.dtypes.DeviceType):
         assert applied == 1
 
         # Use FPGA Expansion for lib nodes, and expand them to enable further optimizations
-        from dace.libraries.blas import Dot
-        Dot.default_implementation = "FPGA_PartialSums"
+        from dace.libraries.blas import Gemv
+        Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
-        #sdfg.apply_transformations_repeated([InlineSDFG], print_report=True)
+        
+        lm_applied = sdfg.apply_transformations_repeated((LoopToMap, RefineNestedAccess),
+                                                    validate=False,
+                                                    validate_all=False)
+        print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
+
+        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True)
+        print("Applied Inline SDFG & StreamingMemory: " + str(sm_applied))
+
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications: " + str(simplify))
+
+        mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
+        print("Applied MapFusion: " + str(mf_applied))
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications: " + str(simplify))
+
+        ##########################
+        #FPGA Auto Opt
+        fpga_auto_opt.fpga_global_to_local(sdfg)
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
         sdfg.specialize(dict(N=N))
 
         for s in sdfg.states():

@@ -474,7 +474,7 @@ required:
 
                     platform:
                         type: str
-                        default: xilinx_u250_xdma_201830_2
+                        default: xilinx_u280_xdma_201920_3
                         title: Target platform for Xilinx
                         description: Platform name of Vitis/SDx/SDAccel target.
 

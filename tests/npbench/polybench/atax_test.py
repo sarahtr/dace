@@ -109,17 +109,33 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Gemv
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
-        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-        #                                                  [{}, {
-        #                                                      'storage': dace.StorageType.FPGA_Local
-        #                                                  }],
-        #                                                  print_report=True)
-        # assert sm_applied == 6  # 3 inlines and 3 Streaming memories
+        
+        lm_applied = sdfg.apply_transformations_repeated((LoopToMap, RefineNestedAccess),
+                                                    validate=False,
+                                                    validate_all=False)
+        print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
 
-        ###########################
-        # FPGA Auto Opt
-        # fpga_auto_opt.fpga_global_to_local(sdfg)
-        # fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
+        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True)
+        print("Applied Inline SDFG & StreamingMemory: " + str(sm_applied))
+
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications: " + str(simplify))
+
+        mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
+        print("Applied MapFusion: " + str(mf_applied))
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications: " + str(simplify))
+
+        ##########################
+        #FPGA Auto Opt
+        fpga_auto_opt.fpga_global_to_local(sdfg)
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
 
         # specialize the SDFG (needed by the GEMV expansion)
         sdfg.specialize(dict(M=M, N=N))
