@@ -51,7 +51,6 @@ def init_data(M, N):
 def run_atax(device_type: dace.dtypes.DeviceType):
     """
     Runs ATAX for the given device
-
     :return: the SDFG
     """
 
@@ -115,22 +114,28 @@ def run_atax(device_type: dace.dtypes.DeviceType):
                                                     validate_all=False)
         print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
 
-        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True)
-        print("Applied Inline SDFG & StreamingMemory: " + str(sm_applied))
+        sc_applied = sdfg.apply_transformations_repeated([StreamingComposition])
+        print("Applied StreamingComposition: " + str(sc_applied))
+
+        il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
+        print("Applied InlineSDFG: " + str(il_applied))
+
+        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
+        #                                                  [{}, {
+        #                                                      'storage': dace.StorageType.FPGA_Local
+        #                                                  }],
+        #                                                  print_report=True)
+        # print("Applied Inline SDFG & StreamingComposition: " + str(sm_applied))
 
 
         simplify = sdfg.simplify()
-        print("Applied simplifications: " + str(simplify))
+        print("Applied simplifications 1: " + str(simplify))
 
         mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
         print("Applied MapFusion: " + str(mf_applied))
 
         simplify = sdfg.simplify()
-        print("Applied simplifications: " + str(simplify))
+        print("Applied simplifications 2: " + str(simplify))
 
         ##########################
         #FPGA Auto Opt
@@ -145,7 +150,7 @@ def run_atax(device_type: dace.dtypes.DeviceType):
                 s.instrument = dace.InstrumentationType.FPGA
                 #break
 
-        y = sdfg(A, x)
+        y = sdfg(A=A, x=x)
 
 
 

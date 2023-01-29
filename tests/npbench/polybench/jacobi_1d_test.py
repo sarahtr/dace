@@ -99,7 +99,6 @@ def run_jacobi_1d(device_type: dace.dtypes.DeviceType):
         sdfg.apply_transformations_repeated([MoveLoopIntoMap])
 
         '''------------'''
-
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
@@ -113,22 +112,28 @@ def run_jacobi_1d(device_type: dace.dtypes.DeviceType):
                                                     validate_all=False)
         print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
 
-        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True)
-        print("Applied Inline SDFG & StreamingMemory: " + str(sm_applied))
+        sc_applied = sdfg.apply_transformations_repeated([StreamingComposition])
+        print("Applied StreamingComposition: " + str(sc_applied))
+
+        il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
+        print("Applied InlineSDFG: " + str(il_applied))
+
+        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
+        #                                                  [{}, {
+        #                                                      'storage': dace.StorageType.FPGA_Local
+        #                                                  }],
+        #                                                  print_report=True)
+        # print("Applied Inline SDFG & StreamingComposition: " + str(sm_applied))
 
 
         simplify = sdfg.simplify()
-        print("Applied simplifications: " + str(simplify))
+        print("Applied simplifications 1: " + str(simplify))
 
         mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
         print("Applied MapFusion: " + str(mf_applied))
 
         simplify = sdfg.simplify()
-        print("Applied simplifications: " + str(simplify))
+        print("Applied simplifications 2: " + str(simplify))
 
         ##########################
         #FPGA Auto Opt

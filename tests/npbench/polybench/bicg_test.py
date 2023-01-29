@@ -7,7 +7,7 @@ import pytest
 import argparse
 from dace.fpga_testing import fpga_test
 from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
-from dace.transformation.dataflow import StreamingMemory
+from dace.transformation.dataflow import StreamingMemory, StreamingComposition
 from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt, greedy_fuse
 from dace.transformation.dataflow import MapCollapse, TrivialMapElimination, MapFusion, ReduceExpansion
 from dace.transformation.interstate import LoopToMap, RefineNestedAccess
@@ -96,8 +96,6 @@ def run_bicg(device_type: dace.dtypes.DeviceType):
         sdfg.apply_transformations_repeated([MoveLoopIntoMap])
 
         '''------------'''
-
-
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
@@ -105,18 +103,39 @@ def run_bicg(device_type: dace.dtypes.DeviceType):
         from dace.libraries.blas import Gemv
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
+        
+        lm_applied = sdfg.apply_transformations_repeated((LoopToMap, RefineNestedAccess),
+                                                    validate=False,
+                                                    validate_all=False)
+        print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
 
-        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+        sc_applied = sdfg.apply_transformations_repeated([StreamingComposition])
+        print("Applied StreamingComposition: " + str(sc_applied))
+
+        il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
+        print("Applied InlineSDFG: " + str(il_applied))
+
+        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
         #                                                  [{}, {
         #                                                      'storage': dace.StorageType.FPGA_Local
         #                                                  }],
         #                                                  print_report=True)
-        # assert sm_applied == 8  # 3 inlines and 3 Streaming memories
+        # print("Applied Inline SDFG & StreamingComposition: " + str(sm_applied))
 
-        ###########################
-        # FPGA Auto Opt
-        # fpga_auto_opt.fpga_global_to_local(sdfg)
-        # fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications 1: " + str(simplify))
+
+        mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
+        print("Applied MapFusion: " + str(mf_applied))
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications 2: " + str(simplify))
+
+        ##########################
+        #FPGA Auto Opt
+        fpga_auto_opt.fpga_global_to_local(sdfg)
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
 
 
 
@@ -127,7 +146,7 @@ def run_bicg(device_type: dace.dtypes.DeviceType):
             if is_fpga_kernel(sdfg, s):
                 s.instrument = dace.InstrumentationType.FPGA
                 break
-        s, q = sdfg(A, p, r)
+        s, q = sdfg(A=A, p=p, r=r)
 
     # Compute ground truth and Validate result
     s_ref, q_ref = bicg_kernel.f(A, p, r)
