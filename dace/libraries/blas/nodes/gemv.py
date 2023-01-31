@@ -127,7 +127,7 @@ class ExpandGemvFpgaAccumulate(ExpandTransformation):
     environments = []
 
     @staticmethod
-    def expansion(node, parent_state, parent_sdfg, tile_size_x=None, tile_size_y=None, num_partial_sums=16):
+    def expansion(node, parent_state, parent_sdfg, tile_size_x=None, tile_size_y=None, num_partial_sums=32):
         """
         :param node: Node to expand.
         :param parent_state: State that the node is in.

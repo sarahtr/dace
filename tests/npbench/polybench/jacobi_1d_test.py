@@ -107,30 +107,13 @@ def run_jacobi_1d(device_type: dace.dtypes.DeviceType):
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
         
-        lm_applied = sdfg.apply_transformations_repeated((LoopToMap, RefineNestedAccess),
-                                                    validate=False,
-                                                    validate_all=False)
-        print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
-
-        sc_applied = sdfg.apply_transformations_repeated([StreamingComposition])
-        print("Applied StreamingComposition: " + str(sc_applied))
+        
+        simplify = sdfg.simplify()
+        print("Applied simplifications 1: " + str(simplify))
 
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))
 
-        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
-        #                                                  [{}, {
-        #                                                      'storage': dace.StorageType.FPGA_Local
-        #                                                  }],
-        #                                                  print_report=True)
-        # print("Applied Inline SDFG & StreamingComposition: " + str(sm_applied))
-
-
-        simplify = sdfg.simplify()
-        print("Applied simplifications 1: " + str(simplify))
-
-        mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
-        print("Applied MapFusion: " + str(mf_applied))
 
         simplify = sdfg.simplify()
         print("Applied simplifications 2: " + str(simplify))

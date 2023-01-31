@@ -97,7 +97,6 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
 
         '''------------'''
 
-        
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
@@ -106,30 +105,13 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
         
-        lm_applied = sdfg.apply_transformations_repeated((LoopToMap, RefineNestedAccess),
-                                                    validate=False,
-                                                    validate_all=False)
-        print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
-
-        sc_applied = sdfg.apply_transformations_repeated([StreamingComposition])
-        print("Applied StreamingComposition: " + str(sc_applied))
+        
+        simplify = sdfg.simplify()
+        print("Applied simplifications 1: " + str(simplify))
 
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))
 
-        # sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
-        #                                                  [{}, {
-        #                                                      'storage': dace.StorageType.FPGA_Local
-        #                                                  }],
-        #                                                  print_report=True)
-        # print("Applied Inline SDFG & StreamingComposition: " + str(sm_applied))
-
-
-        simplify = sdfg.simplify()
-        print("Applied simplifications 1: " + str(simplify))
-
-        mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
-        print("Applied MapFusion: " + str(mf_applied))
 
         simplify = sdfg.simplify()
         print("Applied simplifications 2: " + str(simplify))
@@ -138,6 +120,7 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         #FPGA Auto Opt
         fpga_auto_opt.fpga_global_to_local(sdfg)
         fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
+
 
 
         sdfg.specialize(dict(N=N))

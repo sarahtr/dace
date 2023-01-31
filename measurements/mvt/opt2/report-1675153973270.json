@@ -1,0 +1,9 @@
+{
+  "traceEvents": [
+    {"name": "mod_0_augassign_30_4_9_combine_y_79_", "cat": "FPGA", "ph": "X", "ts": 1618789827870, "dur": 1541923, "pid": 111858, "tid": 6360269863315313058, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "mod_0_augassign_31_4_13_combine_y_45", "cat": "FPGA", "ph": "X", "ts": 1618789827896, "dur": 1555055, "pid": 111858, "tid": 6360269863315313058, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA kernel runtime for mvt_kernel", "cat": "FPGA", "ph": "X", "ts": 1618789827870, "dur": 1555081, "pid": 111858, "tid": 6360269863315313058, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA state runtime for mvt_kernel", "cat": "FPGA", "ph": "X", "ts": 1675153971715296, "dur": 1555231, "pid": 111858, "tid": 6360269863315313058, "args": {"sdfg_id": 0, "state_id": 0}}
+  ],
+  "sdfgHash": "6ee66be769f7a9b4db7ac45e1e7d86e93fd81d3b898a19f5c64871290b49996e"
+}
