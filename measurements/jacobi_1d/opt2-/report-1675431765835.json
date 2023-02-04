@@ -1,0 +1,8 @@
+{
+  "traceEvents": [
+    {"name": "jacobi_1d_kernel_0_0", "cat": "FPGA", "ph": "X", "ts": 229752, "dur": 61858, "pid": 2505842, "tid": 2845226571426738915, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA kernel runtime for jacobi_1d_kernel", "cat": "FPGA", "ph": "X", "ts": 229752, "dur": 61858, "pid": 2505842, "tid": 2845226571426738915, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA state runtime for jacobi_1d_kernel", "cat": "FPGA", "ph": "X", "ts": 1675431765772644, "dur": 62658, "pid": 2505842, "tid": 2845226571426738915, "args": {"sdfg_id": 0, "state_id": 0}}
+  ],
+  "sdfgHash": "3d44ad007bd11f6a81cca25bcc69ab5238813c3d42626350f91fad9a7df8218b"
+}
