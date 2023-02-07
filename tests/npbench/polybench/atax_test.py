@@ -9,7 +9,7 @@ from dace.fpga_testing import fpga_test, xilinx_test
 from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
 from dace.transformation.dataflow import StreamingMemory, StreamingComposition
 from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt, greedy_fuse
-from dace.transformation.dataflow import MapCollapse, TrivialMapElimination, MapFusion, ReduceExpansion
+from dace.transformation.dataflow import MapCollapse, TrivialMapElimination, MapFusion, ReduceExpansion, PruneConnectors
 from dace.transformation.interstate import LoopToMap, RefineNestedAccess
 from dace.transformation.subgraph.composite import CompositeFusion
 from dace.transformation.subgraph import helpers as xfsh
@@ -68,6 +68,8 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         # Parse SDFG and apply FPGA friendly optimization
         sdfg = atax_kernel.to_sdfg(simplify=True)
 
+
+
         '''
         General transformations from auto_optimize:
         '''
@@ -101,6 +103,8 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         sdfg.apply_transformations_repeated([MoveLoopIntoMap])
 
         '''------------'''
+        
+
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
@@ -113,6 +117,24 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         simplify = sdfg.simplify()
         print("Applied simplifications 1: " + str(simplify))
 
+        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True)
+        sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True,
+                                                         permissive=True)
+        
+        # Prune connectors after Streaming Composition
+        pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
+                                                           options=[{
+                                                               'remove_unused_containers': True
+                                                           }])
+
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))
 
@@ -124,6 +146,10 @@ def run_atax(device_type: dace.dtypes.DeviceType):
         #FPGA Auto Opt
         fpga_auto_opt.fpga_global_to_local(sdfg)
         fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
+
+        # In this case, we want to generate the top-level state as an host-based state,
+        # not an FPGA kernel. We need to explicitly indicate that
+        #sdfg.states()[0].location["is_FPGA_kernel"] = False
 
         # specialize the SDFG (needed by the GEMV expansion)
         sdfg.specialize(dict(M=M, N=N))

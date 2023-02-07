@@ -97,12 +97,12 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
         # fuse subgraphs greedily
         sdfg.simplify()
 
-        greedy_fuse(sdfg, device=device_type, validate_all=False)
+        #greedy_fuse(sdfg, device=device_type, validate_all=False)
 
         # fuse stencils greedily
-        greedy_fuse(sdfg, device=device_type, validate_all=False, recursive=False, stencil=True)
+        #greedy_fuse(sdfg, device=device_type, validate_all=False, recursive=False, stencil=True)
 
-        # Move Loops inside Maps when possible
+        # # Move Loops inside Maps when possible
         from dace.transformation.interstate import MoveLoopIntoMap
         sdfg.apply_transformations_repeated([MoveLoopIntoMap])
 
@@ -110,36 +110,36 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
-        # Use FPGA Expansion for lib nodes, and expand them to enable further optimizations
-        from dace.libraries.blas import Gemv
-        Gemv.default_implementation = "FPGA_Accumulate"
-        sdfg.expand_library_nodes()
-        
-        
-        simplify = sdfg.simplify()
-        print("Applied simplifications 1: " + str(simplify))
+        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True)
+        sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
+                                                         [{}, {
+                                                             'storage': dace.StorageType.FPGA_Local
+                                                         }],
+                                                         print_report=True,
+                                                         permissive=True)
+        #assert sc_applied == 1
 
-        il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
-        print("Applied InlineSDFG: " + str(il_applied))
+        # Prune connectors after Streaming Composition
+        pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
+                                                           options=[{
+                                                               'remove_unused_containers': True
+                                                           }])
 
+        #assert pruned_conns == 1
 
-        simplify = sdfg.simplify()
-        print("Applied simplifications 2: " + str(simplify))
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
 
-        ##########################
-        #FPGA Auto Opt
-        fpga_auto_opt.fpga_global_to_local(sdfg)
-        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
-
-
+        # In this case, we want to generate the top-level state as an host-based state,
+        # not an FPGA kernel. We need to explicitly indicate that
+        sdfg.states()[0].location["is_FPGA_kernel"] = False
+        # we need to specialize both the top-level SDFG and the nested SDFG
         sdfg.specialize(dict(N=N))
-        #sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
+        sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
         # run program
-        for s in sdfg.states():
-            if is_fpga_kernel(sdfg, s):
-                s.instrument = dace.InstrumentationType.FPGA
-                break
-                
         sdfg(path=path)
 
         print(sdfg.get_latest_report())
