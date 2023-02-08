@@ -1,0 +1,8 @@
+{
+  "traceEvents": [
+    {"name": "bicg_kernel_0_0", "cat": "FPGA", "ph": "X", "ts": 0, "dur": 0, "pid": 2060105, "tid": 1259719349584560596, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA kernel runtime for bicg_kernel", "cat": "FPGA", "ph": "X", "ts": 0, "dur": 0, "pid": 2060105, "tid": 1259719349584560596, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA state runtime for bicg_kernel", "cat": "FPGA", "ph": "X", "ts": 1675846569316537, "dur": 8330200, "pid": 2060105, "tid": 1259719349584560596, "args": {"sdfg_id": 0, "state_id": 0}}
+  ],
+  "sdfgHash": "bd67254bae0bbc6b2e3436f37b451cd95771e873d5ecdb284af2e495a7b11818"
+}
