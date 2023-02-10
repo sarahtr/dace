@@ -122,18 +122,21 @@ def run_atax(device_type: dace.dtypes.DeviceType):
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True)
+        print("Applied Streaming Memory, Inline: " + str(sm_applied))
         sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
                                                          [{}, {
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True,
                                                          permissive=True)
+        print("Applied Streaming Composition, Inline: " + str(sc_applied))
         
         # Prune connectors after Streaming Composition
         pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
                                                            options=[{
                                                                'remove_unused_containers': True
                                                            }])
+        print("Applied Prune Connectors: " + str(pruned_conns))
 
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))

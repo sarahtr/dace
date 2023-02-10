@@ -113,18 +113,21 @@ def run_bicg(device_type: dace.dtypes.DeviceType):
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True)
+        print("Applied Streaming Memory, Inline: " + str(sm_applied))
         sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
                                                          [{}, {
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True,
                                                          permissive=True)
+        print("Applied Streaming Composition, Inline: " + str(sc_applied))
         
         # Prune connectors after Streaming Composition
         pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
                                                            options=[{
                                                                'remove_unused_containers': True
                                                            }])
+        print("Applied Prune Connectors: " + str(pruned_conns))
 
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))
@@ -137,7 +140,6 @@ def run_bicg(device_type: dace.dtypes.DeviceType):
         #FPGA Auto Opt
         fpga_auto_opt.fpga_global_to_local(sdfg)
         fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
-
         # In this case, we want to generate the top-level state as an host-based state,
         # not an FPGA kernel. We need to explicitly indicate that
         #sdfg.states()[0].location["is_FPGA_kernel"] = False

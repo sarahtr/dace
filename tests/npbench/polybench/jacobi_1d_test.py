@@ -147,10 +147,10 @@ def run_jacobi_1d(device_type: dace.dtypes.DeviceType):
         sdfg.specialize(dict(N=N))
         sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
 
-        for s in sdfg.states():
-            if is_fpga_kernel(sdfg, s):
+        for s in sdfg.states()[0].nodes()[0].sdfg.states():
+            if is_fpga_kernel(sdfg.states()[0].nodes()[0].sdfg, s):
                 s.instrument = dace.InstrumentationType.FPGA
-                print("should instrument")
+                #print("should instrument")
                 break
         
         

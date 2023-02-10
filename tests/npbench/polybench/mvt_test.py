@@ -9,7 +9,7 @@ from dace.fpga_testing import fpga_test, xilinx_test
 from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
 from dace.transformation.dataflow import StreamingMemory, StreamingComposition
 from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt, greedy_fuse
-from dace.transformation.dataflow import MapCollapse, TrivialMapElimination, MapFusion, ReduceExpansion, PruneConnectors
+from dace.transformation.dataflow import MapCollapse, TrivialMapElimination, MapFusion, ReduceExpansion, PruneConnectors, Vectorization
 from dace.transformation.interstate import LoopToMap, RefineNestedAccess
 from dace.transformation.subgraph.composite import CompositeFusion
 from dace.transformation.subgraph import helpers as xfsh
@@ -114,18 +114,21 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True)
+        print("Applied Streaming Memory, Inline: " + str(sm_applied))
         sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
                                                          [{}, {
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True,
                                                          permissive=True)
+        print("Applied Streaming Composition, Inline: " + str(sc_applied))
         
         # Prune connectors after Streaming Composition
         pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
                                                            options=[{
                                                                'remove_unused_containers': True
                                                            }])
+        print("Applied Prune Connectors: " + str(pruned_conns))
 
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))

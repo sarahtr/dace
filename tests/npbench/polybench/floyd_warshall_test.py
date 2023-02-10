@@ -8,7 +8,7 @@ import pytest
 import argparse
 from dace.fpga_testing import fpga_test
 from dace.transformation.interstate import FPGATransformSDFG, InlineSDFG
-from dace.transformation.dataflow import StreamingMemory, MapFusion, StreamingComposition, PruneConnectors
+from dace.transformation.dataflow import StreamingMemory, MapFusion, StreamingComposition, PruneConnectors, Vectorization
 from dace.transformation.auto.auto_optimize import auto_optimize, fpga_auto_opt, greedy_fuse
 from dace.transformation.dataflow import MapCollapse, TrivialMapElimination, MapFusion, ReduceExpansion
 from dace.transformation.interstate import LoopToMap, RefineNestedAccess
@@ -59,7 +59,7 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
     """
 
     # Initialize data (polybench mini size)
-    N = sizes["large"]
+    N = sizes["small"]
     path = init_data(N)
     gt_path = np.copy(path)
 
@@ -110,35 +110,61 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
+        # Use FPGA Expansion for lib nodes, and expand them to enable further optimizations
+        from dace.libraries.blas import Gemv
+        Gemv.default_implementation = "FPGA_Accumulate"
+        sdfg.expand_library_nodes()
+        
+        
+        simplify = sdfg.simplify()
+        print("Applied simplifications 1: " + str(simplify))
+
         sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
                                                          [{}, {
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True)
+        print("Applied Streaming Memory, Inline: " + str(sm_applied))
         sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
                                                          [{}, {
                                                              'storage': dace.StorageType.FPGA_Local
                                                          }],
                                                          print_report=True,
                                                          permissive=True)
-        #assert sc_applied == 1
-
+        print("Applied Streaming Composition, Inline: " + str(sc_applied))
+        
         # Prune connectors after Streaming Composition
         pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
                                                            options=[{
                                                                'remove_unused_containers': True
                                                            }])
+        print("Applied Prune Connectors: " + str(pruned_conns))
 
-        #assert pruned_conns == 1
+        il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
+        print("Applied InlineSDFG: " + str(il_applied))
 
-        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg)
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications 2: " + str(simplify))
+
+
+        ##########################
+        #FPGA Auto Opt
+        fpga_auto_opt.fpga_global_to_local(sdfg)
+        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
 
         # In this case, we want to generate the top-level state as an host-based state,
         # not an FPGA kernel. We need to explicitly indicate that
         sdfg.states()[0].location["is_FPGA_kernel"] = False
-        # we need to specialize both the top-level SDFG and the nested SDFG
         sdfg.specialize(dict(N=N))
         sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
+
+        for s in sdfg.states()[0].nodes()[0].sdfg.states():
+            if is_fpga_kernel(sdfg.states()[0].nodes()[0].sdfg, s):
+                s.instrument = dace.InstrumentationType.FPGA
+                #print("should instrument")
+                break
+            
         # run program
         sdfg(path=path)
 
