@@ -6,6 +6,7 @@ import numpy as np
 
 filenames = os.listdir('/home/sarahtr/dace/measurements/mvt/streaming')
 filenames.remove("get_timings.py")
+filenames.remove("v++_mvt_kernel_0_0_hw.log")
 
 print(filenames)
 state = []

@@ -19,7 +19,7 @@ from dace.sdfg.utils import is_fpga_kernel
 
 # Data set sizes
 # N
-sizes = {"mini": 60, "small": 180, "medium": 500, "large": 2800, "extra-large": 5600}
+sizes = {"mini": 60, "small": 180, "medium": 500, "large": 2000, "extra-large": 5600}
 
 N = dc.symbol('N', dtype=dc.int32)
 
@@ -59,7 +59,7 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
     """
 
     # Initialize data (polybench mini size)
-    N = sizes["small"]
+    N = sizes["large"]
     path = init_data(N)
     gt_path = np.copy(path)
 
@@ -72,7 +72,6 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
     elif device_type == dace.dtypes.DeviceType.FPGA:
         # Parse SDFG and apply FPGA friendly optimization
         sdfg = kernel.to_sdfg(simplify=True)
-        
         
         '''
         General transformations from auto_optimize:
@@ -91,20 +90,24 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
             transformed = l2ms > 0
 
         # Collapse maps and eliminate trivial dimensions
-        sdfg.simplify()
-        sdfg.apply_transformations_repeated(MapCollapse, validate=False, validate_all=False)
+        s = sdfg.simplify()
+        print("applied simplifications 1: " + str(s))
+        mc = sdfg.apply_transformations_repeated(MapCollapse, validate=False, validate_all=False)
+        print("applied MapCollapse: " + str(mc))
 
         # fuse subgraphs greedily
-        sdfg.simplify()
+        sp = sdfg.simplify()
+        print("applied simplifications: " + str(sp))
 
-        #greedy_fuse(sdfg, device=device_type, validate_all=False)
+        greedy_fuse(sdfg, device=device_type, validate_all=False)
 
         # fuse stencils greedily
-        #greedy_fuse(sdfg, device=device_type, validate_all=False, recursive=False, stencil=True)
+        greedy_fuse(sdfg, device=device_type, validate_all=False, recursive=False, stencil=True)
 
-        # # Move Loops inside Maps when possible
+        # Move Loops inside Maps when possible
         from dace.transformation.interstate import MoveLoopIntoMap
-        sdfg.apply_transformations_repeated([MoveLoopIntoMap])
+        mlim = sdfg.apply_transformations_repeated([MoveLoopIntoMap])
+        print("applied: MoveLoopIntoMap: " + str(mlim))
 
         '''------------'''
         applied = sdfg.apply_transformations([FPGATransformSDFG])
@@ -119,27 +122,6 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
         simplify = sdfg.simplify()
         print("Applied simplifications 1: " + str(simplify))
 
-        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True)
-        print("Applied Streaming Memory, Inline: " + str(sm_applied))
-        sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True,
-                                                         permissive=True)
-        print("Applied Streaming Composition, Inline: " + str(sc_applied))
-        
-        # Prune connectors after Streaming Composition
-        pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
-                                                           options=[{
-                                                               'remove_unused_containers': True
-                                                           }])
-        print("Applied Prune Connectors: " + str(pruned_conns))
-
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))
 
@@ -147,24 +129,24 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
         simplify = sdfg.simplify()
         print("Applied simplifications 2: " + str(simplify))
 
-
         ##########################
         #FPGA Auto Opt
         fpga_auto_opt.fpga_global_to_local(sdfg)
-        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
+        il = fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
+        print("applied interleave: " + str(il))
 
-        # In this case, we want to generate the top-level state as an host-based state,
-        # not an FPGA kernel. We need to explicitly indicate that
-        sdfg.states()[0].location["is_FPGA_kernel"] = False
+
+
+
+        #sdfg.states()[0].location["is_FPGA_kernel"] = False
         sdfg.specialize(dict(N=N))
-        sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
-
-        for s in sdfg.states()[0].nodes()[0].sdfg.states():
-            if is_fpga_kernel(sdfg.states()[0].nodes()[0].sdfg, s):
+        #sdfg.states()[0].nodes()[0].sdfg.specialize(dict(N=N))
+        
+        for s in sdfg.states():
+            if is_fpga_kernel(sdfg, s):
                 s.instrument = dace.InstrumentationType.FPGA
-                #print("should instrument")
                 break
-            
+
         # run program
         sdfg(path=path)
 
@@ -174,6 +156,10 @@ def run_floyd_warshall(device_type: dace.dtypes.DeviceType):
 
     # Compute ground truth and validate result
     ground_truth(gt_path, N)
+    print("result:")
+    print(path)
+    print("ground truth: ")
+    print(gt_path)
     assert np.allclose(path, gt_path)
     return sdfg
 

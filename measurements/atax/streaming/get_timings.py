@@ -6,6 +6,7 @@ import numpy as np
 
 filenames = os.listdir('/home/sarahtr/dace/measurements/atax/streaming')
 filenames.remove("get_timings.py")
+filenames.remove("v++_atax_kernel_0_0_hw_4180993.backup.log")
 print(filenames)
 state = []
 kernel = []

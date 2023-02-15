@@ -62,7 +62,6 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         # Parse SDFG and apply FPGA friendly optimization
         sdfg = mvt_kernel.to_sdfg(simplify=True)
 
-        
         '''
         General transformations from auto_optimize:
         '''
@@ -80,11 +79,14 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
             transformed = l2ms > 0
 
         # Collapse maps and eliminate trivial dimensions
-        sdfg.simplify()
-        sdfg.apply_transformations_repeated(MapCollapse, validate=False, validate_all=False)
+        s = sdfg.simplify()
+        print("applied simplifications 1: " + str(s))
+        mc = sdfg.apply_transformations_repeated(MapCollapse, validate=False, validate_all=False)
+        print("applied MapCollapse: " + str(mc))
 
         # fuse subgraphs greedily
-        sdfg.simplify()
+        sp = sdfg.simplify()
+        print("applied simplifications: " + str(sp))
 
         greedy_fuse(sdfg, device=device_type, validate_all=False)
 
@@ -93,10 +95,10 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
 
         # Move Loops inside Maps when possible
         from dace.transformation.interstate import MoveLoopIntoMap
-        sdfg.apply_transformations_repeated([MoveLoopIntoMap])
+        mlim = sdfg.apply_transformations_repeated([MoveLoopIntoMap])
+        print("applied: MoveLoopIntoMap: " + str(mlim))
 
         '''------------'''
-
         applied = sdfg.apply_transformations([FPGATransformSDFG])
         assert applied == 1
 
@@ -105,34 +107,24 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         Gemv.default_implementation = "FPGA_Accumulate"
         sdfg.expand_library_nodes()
         
-        
-        simplify = sdfg.simplify()
-        print("Applied simplifications 1: " + str(simplify))
+        lm_applied = sdfg.apply_transformations_repeated((LoopToMap, RefineNestedAccess),
+                                                    validate=False,
+                                                    validate_all=False)
+        print("Applied LoopToMap & RefineNestedAccess: " + str(lm_applied))
 
-        sm_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingMemory],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True)
-        print("Applied Streaming Memory, Inline: " + str(sm_applied))
-        sc_applied = sdfg.apply_transformations_repeated([InlineSDFG, StreamingComposition],
-                                                         [{}, {
-                                                             'storage': dace.StorageType.FPGA_Local
-                                                         }],
-                                                         print_report=True,
-                                                         permissive=True)
-        print("Applied Streaming Composition, Inline: " + str(sc_applied))
-        
-        # Prune connectors after Streaming Composition
-        pruned_conns = sdfg.apply_transformations_repeated(PruneConnectors,
-                                                           options=[{
-                                                               'remove_unused_containers': True
-                                                           }])
-        print("Applied Prune Connectors: " + str(pruned_conns))
+        sc_applied = sdfg.apply_transformations_repeated([StreamingComposition])
+        print("Applied StreamingComposition: " + str(sc_applied))
 
         il_applied = sdfg.apply_transformations_repeated([InlineSDFG])
         print("Applied InlineSDFG: " + str(il_applied))
 
+
+
+        simplify = sdfg.simplify()
+        print("Applied simplifications 1: " + str(simplify))
+
+        mf_applied = sdfg.apply_transformations_repeated([MapFusion], print_report=True)
+        print("Applied MapFusion: " + str(mf_applied))
 
         simplify = sdfg.simplify()
         print("Applied simplifications 2: " + str(simplify))
@@ -140,14 +132,8 @@ def run_mvt(device_type: dace.dtypes.DeviceType):
         ##########################
         #FPGA Auto Opt
         fpga_auto_opt.fpga_global_to_local(sdfg)
-        fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
-
-        # In this case, we want to generate the top-level state as an host-based state,
-        # not an FPGA kernel. We need to explicitly indicate that
-        #sdfg.states()[0].location["is_FPGA_kernel"] = False
-
-
-
+        il = fpga_auto_opt.fpga_rr_interleave_containers_to_banks(sdfg, num_banks=2)
+        print("applied interleave: " + str(il))
         sdfg.specialize(dict(N=N))
         
         for s in sdfg.states():

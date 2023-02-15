@@ -1,0 +1,8 @@
+{
+  "traceEvents": [
+    {"name": "fw_b_kernel_0_0", "cat": "FPGA", "ph": "X", "ts": 219482, "dur": 82189987, "pid": 22563, "tid": 5272010856951468174, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA kernel runtime for fw_b_kernel", "cat": "FPGA", "ph": "X", "ts": 219482, "dur": 82189987, "pid": 22563, "tid": 5272010856951468174, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA state runtime for fw_b_kernel", "cat": "FPGA", "ph": "X", "ts": 1676414378484736, "dur": 82197682, "pid": 22563, "tid": 5272010856951468174, "args": {"sdfg_id": 0, "state_id": 0}}
+  ],
+  "sdfgHash": "6e3530b2658ce99d63275c9e140cd31f3162b16d4334c01e6489d12c9cbeac06"
+}

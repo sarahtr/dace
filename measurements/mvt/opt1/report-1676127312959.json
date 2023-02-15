@@ -1,0 +1,8 @@
+{
+  "traceEvents": [
+    {"name": "mvt_kernel_0_0", "cat": "FPGA", "ph": "X", "ts": 239616, "dur": 62277, "pid": 1738403, "tid": 8842455487479009316, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA kernel runtime for mvt_kernel", "cat": "FPGA", "ph": "X", "ts": 239616, "dur": 62277, "pid": 1738403, "tid": 8842455487479009316, "args": {"sdfg_id": 0, "state_id": 0}},
+    {"name": "Full FPGA state runtime for mvt_kernel", "cat": "FPGA", "ph": "X", "ts": 1676127312890221, "dur": 67930, "pid": 1738403, "tid": 8842455487479009316, "args": {"sdfg_id": 0, "state_id": 0}}
+  ],
+  "sdfgHash": "0a9fbff9ca1bbdf08644be33eb67480d746eafaf6e060f58b913c440177d049e"
+}
